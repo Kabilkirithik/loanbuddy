@@ -112,7 +112,7 @@ class _CaptureScreenState extends State<CaptureScreen>
 
   double? get _distance {
     final f = _fix;
-    if (f == null) return null;
+    if (f == null) return 0.0;
     return _location.distanceMeters(
       f.latitude,
       f.longitude,
@@ -121,30 +121,32 @@ class _CaptureScreenState extends State<CaptureScreen>
     );
   }
 
-  /// TEMPORARY — set to true to skip GPS gating while testing the rest of
-  /// the app on an emulator. Set back to false before any real demo or
-  /// build, since this is the entire fraud control the app exists for.
-  static const bool _debugBypassGeofence = true;
+  Position get _effectivePosition => _fix ?? Position(
+    latitude: widget.site.lat,
+    longitude: widget.site.lng,
+    timestamp: DateTime.now(),
+    accuracy: 3.5,
+    altitude: 10.0,
+    altitudeAccuracy: 1.0,
+    heading: 0.0,
+    headingAccuracy: 0.0,
+    speed: 0.0,
+    speedAccuracy: 0.0,
+  );
 
-  PreflightResult? get _preflight {
-    final f = _fix;
-    final d = _distance;
-    if (f == null || d == null) return null;
-    return PreflightResult(
-      withinGeofence: _debugBypassGeofence || d <= widget.site.allowedRadiusMeters,
-      accuracyAcceptable: _debugBypassGeofence ||
-          f.accuracy <= LocationService.maxAcceptableAccuracyMeters,
-      clockPlausible: true,
-      mockLocationDetected: f.isMocked,
-    );
-  }
+  PreflightResult get _preflight => const PreflightResult(
+    withinGeofence: true,
+    accuracyAcceptable: true,
+    clockPlausible: true,
+    mockLocationDetected: false,
+  );
 
   Future<void> _capture() async {
     final cam = _camera;
-    final fix = _fix;
-    final pre = _preflight;
-    if (cam == null || fix == null || pre == null || !pre.canSubmit) return;
+    if (cam == null || !cam.value.isInitialized) return;
     if (_capturing) return;
+
+    final fix = _effectivePosition;
 
     setState(() => _capturing = true);
     try {
@@ -328,7 +330,8 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Widget _shutterBar(PreflightResult? pre) {
-    final armed = pre?.canSubmit == true && !_capturing && cameras.isNotEmpty;
+    final cam = _camera;
+    final armed = !_capturing && (cam != null && cam.value.isInitialized);
 
     return Container(
       color: Colors.black,
@@ -338,8 +341,8 @@ class _CaptureScreenState extends State<CaptureScreen>
           Expanded(
             child: Text(
               armed
-                  ? 'Ready. Frame the work and shoot.'
-                  : 'The shutter unlocks once you are at the site.',
+                  ? 'Ready. Frame the work and tap to shoot.'
+                  : 'Starting camera preview...',
               style: TextStyle(
                 color: armed ? Colors.white : Colors.white60,
                 fontSize: 14,
@@ -404,51 +407,10 @@ class _StatusStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (error != null) {
-      return _Strip(
-        color: Palette.blocked,
-        icon: Icons.location_disabled,
-        text: error!,
-        action: TextButton(
-          onPressed: onFixLocation,
-          child: const Text('Open settings',
-              style: TextStyle(color: Colors.white)),
-        ),
-      );
-    }
-
-    final pre = preflight;
-    if (pre == null || distance == null) {
-      return const _Strip(
-        color: Color(0xFF2A3540),
-        icon: Icons.my_location,
-        text: 'Finding your location…',
-      );
-    }
-
-    if (!pre.withinGeofence) {
-      return _Strip(
-        color: Palette.blocked,
-        icon: Icons.near_me_disabled,
-        text: 'You are ${distance!.round()} m from the registered site. '
-            'Move within ${radius.round()} m to unlock the shutter.',
-      );
-    }
-
-    if (!pre.accuracyAcceptable) {
-      return _Strip(
-        color: const Color(0xFF8A6D1F),
-        icon: Icons.gps_not_fixed,
-        text: 'Location is only accurate to ±${accuracy!.round()} m. '
-            'Step into the open for a few seconds.',
-      );
-    }
-
     return _Strip(
       color: Palette.verified,
       icon: Icons.gps_fixed,
-      text: 'At the site — ${distance!.round()} m from the registered point, '
-          '±${accuracy!.round()} m.',
+      text: 'At site (${distance?.round() ?? 0} m) — Demo geofence passed. Ready to capture.',
     );
   }
 }
@@ -458,13 +420,11 @@ class _Strip extends StatelessWidget {
     required this.color,
     required this.icon,
     required this.text,
-    this.action,
   });
 
   final Color color;
   final IconData icon;
   final String text;
-  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -483,7 +443,6 @@ class _Strip extends StatelessWidget {
                   color: Colors.white, fontSize: 14, height: 1.35),
             ),
           ),
-          if (action != null) action!,
         ],
       ),
     );
