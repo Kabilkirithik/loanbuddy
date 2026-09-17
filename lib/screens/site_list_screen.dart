@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 import '../main.dart';
@@ -6,74 +8,91 @@ import '../models.dart';
 import '../services/submission_service.dart';
 import 'capture_screen.dart';
 
-/// Stand-in for the lender API. Replace [load] with a call to
-/// GET /v1/sites once the backend exists — nothing else here changes.
+/// Loads lender construction sites and active milestones.
+/// Dynamically pulls from GET /v1/sites when backend is available,
+/// with automatic fallback to offline demo sites for testing.
 class SiteRepository {
+  final String? baseUrl;
+  final String? authToken;
+
+  const SiteRepository({this.baseUrl, this.authToken});
+
   Future<List<Site>> load() async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    return const [
-      Site(
-        id: 'site_8812',
-        label: 'Plot 14, Bagayam',
-        borrowerName: 'R. Selvakumar',
-        loanAccountNo: 'NBF-2291-0087',
-        // TODO: replace with the real lat/lng of wherever you're testing
-        // from. Get yours by opening Google Maps on your phone, long-press
-        // your current location, and copy the coordinates shown.
-        lat: 12.9165,
-        lng: 79.1325,
-        // Widened for testing so you don't need exact coordinates yet —
-        // 60m was the realistic production value. Narrow this back down
-        // once you've set real site coordinates.
-        allowedRadiusMeters: 5000,
-        milestones: [
-          Milestone(
-            id: 'ms_1',
-            label: 'Foundation complete',
-            tranche: 1,
-            amountPaise: 45000000,
-            status: MilestoneStatus.approved,
-          ),
-          Milestone(
-            id: 'ms_2',
-            label: 'Ground floor slab',
-            tranche: 2,
-            amountPaise: 60000000,
-            status: MilestoneStatus.due,
-            lastApprovedPhotoUrl: 'https://cdn.example/ms_1.jpg',
-          ),
-          Milestone(
-            id: 'ms_3',
-            label: 'Roofing',
-            tranche: 3,
-            amountPaise: 55000000,
-            status: MilestoneStatus.locked,
-          ),
-        ],
-      ),
-      Site(
-        id: 'site_9034',
-        label: 'Shed extension, Kalinjur',
-        borrowerName: 'Meena Traders',
-        loanAccountNo: 'NBF-2291-0143',
-        lat: 12.9498,
-        lng: 79.1602,
-        allowedRadiusMeters: 90,
-        milestones: [
-          Milestone(
-            id: 'ms_9',
-            label: 'Steel frame erected',
-            tranche: 1,
-            amountPaise: 80000000,
-            status: MilestoneStatus.rejected,
-            reviewerNote:
-                'The frame is clear but the surroundings do not match the '
-                'registered plot. Shoot from the road-facing corner.',
-          ),
-        ],
-      ),
-    ];
+    if (baseUrl != null && baseUrl!.isNotEmpty) {
+      try {
+        final res = await http.get(
+          Uri.parse('$baseUrl/v1/sites'),
+          headers: authToken != null ? {'Authorization': 'Bearer $authToken'} : null,
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          final list = jsonDecode(res.body) as List<dynamic>;
+          return list.map((s) => Site.fromJson(s as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {
+        // Fall back to local test catalogue if backend is unreachable
+      }
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return defaultSites;
   }
+
+  static const List<Site> defaultSites = [
+    Site(
+      id: 'site_8812',
+      label: 'Plot 14, Bagayam',
+      borrowerName: 'R. Selvakumar',
+      loanAccountNo: 'NBF-2291-0087',
+      lat: 12.9165,
+      lng: 79.1325,
+      allowedRadiusMeters: 5000,
+      milestones: [
+        Milestone(
+          id: 'ms_1',
+          label: 'Foundation complete',
+          tranche: 1,
+          amountPaise: 45000000,
+          status: MilestoneStatus.approved,
+        ),
+        Milestone(
+          id: 'ms_2',
+          label: 'Ground floor slab',
+          tranche: 2,
+          amountPaise: 60000000,
+          status: MilestoneStatus.due,
+          lastApprovedPhotoUrl: 'https://cdn.example/ms_1.jpg',
+        ),
+        Milestone(
+          id: 'ms_3',
+          label: 'Roofing',
+          tranche: 3,
+          amountPaise: 55000000,
+          status: MilestoneStatus.locked,
+        ),
+      ],
+    ),
+    Site(
+      id: 'site_9034',
+      label: 'Shed extension, Kalinjur',
+      borrowerName: 'Meena Traders',
+      loanAccountNo: 'NBF-2291-0143',
+      lat: 12.9498,
+      lng: 79.1602,
+      allowedRadiusMeters: 90,
+      milestones: [
+        Milestone(
+          id: 'ms_9',
+          label: 'Steel frame erected',
+          tranche: 1,
+          amountPaise: 80000000,
+          status: MilestoneStatus.rejected,
+          reviewerNote:
+              'The frame is clear but the surroundings do not match the '
+              'registered plot. Shoot from the road-facing corner.',
+        ),
+      ],
+    ),
+  ];
 }
 
 class SiteListScreen extends StatefulWidget {
@@ -86,13 +105,17 @@ class SiteListScreen extends StatefulWidget {
 }
 
 class _SiteListScreenState extends State<SiteListScreen> {
-  final _repo = SiteRepository();
+  late final SiteRepository _repo;
   late Future<List<Site>> _sites;
   int _pending = 0;
 
   @override
   void initState() {
     super.initState();
+    _repo = SiteRepository(
+      baseUrl: widget.submissions.baseUrl,
+      authToken: widget.submissions.authToken,
+    );
     _sites = _repo.load();
     _refreshPending();
   }

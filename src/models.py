@@ -115,3 +115,49 @@ class InspectionReport(BaseModel):
     flagged_reasons: List[str] = Field(default_factory=list)
     timestamp: str
     recommended_action: str
+
+
+# Flutter Mobile Client Schemas (sitecheck integration)
+class MilestoneSchema(BaseModel):
+    id: str
+    label: str
+    tranche: int
+    amount_paise: int
+    status: str = "due"  # "locked", "due", "inReview", "approved", "rejected"
+    last_approved_photo_url: Optional[str] = None
+    reviewer_note: Optional[str] = None
+
+
+class SiteSchema(BaseModel):
+    id: str
+    label: str
+    borrower_name: str
+    loan_account_no: str
+    lat: float
+    lng: float
+    allowed_radius_meters: float = 75.0
+    milestones: List[MilestoneSchema] = Field(default_factory=list)
+
+
+class CaptureEvidenceSchema(BaseModel):
+    site_id: str
+    milestone_id: str
+    lat: float
+    lng: float
+    accuracy_meters: float
+    distance_from_site_meters: float
+    mock_location_detected: bool
+    captured_at_device: str
+    device_model: str
+    device_id: str
+    image_sha256: str
+    image_bytes: int
+    borrower_note: Optional[str] = None
+
+
+class CaptureResponse(BaseModel):
+    capture_ref: str
+    status: str
+    report: Optional[InspectionReport] = None
+    message: Optional[str] = None
+

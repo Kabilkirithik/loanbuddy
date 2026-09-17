@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SiteCheck requires camera access to take construction progress photos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SiteCheck requires GPS access to verify physical presence at the construction site.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SiteCheck requires GPS access to verify physical presence at the construction site.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

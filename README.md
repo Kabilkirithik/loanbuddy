@@ -157,7 +157,68 @@ The repository also includes `sitecheck`, a specialized Flutter mobile inspectio
 
 ### Key Anti-Fraud Architecture
 1. **Camera-Only Capture**: Deliberately omits photo library picking (`image_picker`) to ensure media originates exclusively from the physical device camera.
-2. **Burn-in Audit Watermark**: Burns an indelible audit band onto the image (loan account, GPS coordinates, timestamp, accuracy) in a background isolate.
-3. **Anti-GPS Spoofing**: Inspects `isMocked` flags via `Geolocator` to block fake GPS / location-spoofing developer apps.
-4. **Offline Resilient Outbox**: Queues evidence packets locally with exponential backoff sync to the FastAPI vision backend.
+2. **Ghost Framing Overlay**: Shows a 30% opacity overlay of the last approved tranche photo to guarantee longitudinal camera framing consistency.
+3. **Burn-in Audit Watermark**: Burns an indelible audit band onto the image (loan account, GPS coordinates, timestamp, accuracy) in a background isolate.
+4. **Anti-GPS Spoofing**: Inspects `isMocked` flags via `Geolocator` to block fake GPS / location-spoofing developer apps.
+5. **Offline Resilient Outbox**: Queues evidence packets locally with exponential backoff sync to the FastAPI vision backend.
+
+---
+
+## 🚀 Quickstart: Running Frontend & Backend
+
+Anyone pulling this repo can run both backend and frontend seamlessly.
+
+### 1. Start the Backend API (Terminal 1)
+```bash
+# Install Python dependencies (managed via uv)
+uv sync
+
+# Launch FastAPI server
+uv run uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Backend endpoints ready:
+* `GET  /v1/sites` — Returns registered loans, active milestones, and coordinates.
+* `POST /v1/captures` — Receives mobile photos, validates SHA-256, prevents photo reuse (409), and executes the 3-Layer Vision Pipeline.
+* `POST /api/v1/inspect` — Direct verification endpoint for CLI and automated workflows.
+* `GET  /v1/health` — System status, active layers, and submission counter.
+
+---
+
+### 2. Run the Mobile App (Terminal 2)
+
+#### For Android Emulator:
+Android emulators access the host machine's `localhost` via `10.0.2.2`:
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+```
+
+#### For macOS Desktop / Web / iOS Simulator:
+```bash
+flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
+# or iOS:
+flutter run -d iPhone --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+#### For Physical Android / iPhone:
+Use your machine's Wi-Fi IP address (e.g., `192.168.1.50`):
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.50:8000
+```
+
+---
+
+### 3. Run the 3-Agent Risk Crew (Optional)
+To run the full multi-agent CrewAI deliberation (`DocumentAgent` ➔ `SiteVisionAgent` ➔ `FraudRiskOfficer`):
+```bash
+# Provide your GEMINI_API_KEY in .env
+uv run python -m agents.main
+```
+
+---
+
+### 4. Run Automated Tests
+```bash
+uv run pytest tests/test_api_captures.py -v
+```
 
