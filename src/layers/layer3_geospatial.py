@@ -288,6 +288,6 @@ class GeospatialValidator:
             lightglue_matches_count=total_matches,
             ransac_inliers_count=inliers_count,
             structural_alignment_score=round(alignment_score, 3),
-            details=match_details,1 
+            details=match_details,
             rejection_reasons=rejection_reasons
         )

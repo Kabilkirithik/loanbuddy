@@ -149,3 +149,15 @@ Run the complete test suite:
 ```bash
 uv run pytest -v
 ```
+---
+
+## Mobile Client: SiteCheck Flutter App 📱
+
+The repository also includes `sitecheck`, a specialized Flutter mobile inspection app located in the root directory.
+
+### Key Anti-Fraud Architecture
+1. **Camera-Only Capture**: Deliberately omits photo library picking (`image_picker`) to ensure media originates exclusively from the physical device camera.
+2. **Burn-in Audit Watermark**: Burns an indelible audit band onto the image (loan account, GPS coordinates, timestamp, accuracy) in a background isolate.
+3. **Anti-GPS Spoofing**: Inspects `isMocked` flags via `Geolocator` to block fake GPS / location-spoofing developer apps.
+4. **Offline Resilient Outbox**: Queues evidence packets locally with exponential backoff sync to the FastAPI vision backend.
+
