@@ -71,10 +71,18 @@ class DepthParallaxValidator:
         else:
             pil_img = image
 
+        orig_w, orig_h = pil_img.size
+        # Optimize inference: Resize to Depth-Anything-V2 native 518px patch resolution
+        if pil_img.width > 518 or pil_img.height > 518:
+            infer_img = pil_img.copy()
+            infer_img.thumbnail((518, 518), Image.Resampling.BILINEAR)
+        else:
+            infer_img = pil_img
+
         pipe = self._get_depth_pipeline()
         if pipe != "FALLBACK":
             try:
-                output = pipe(pil_img)
+                output = pipe(infer_img)
                 if "predicted_depth" in output:
                     depth_tensor = output["predicted_depth"]
                     if isinstance(depth_tensor, torch.Tensor):
@@ -85,9 +93,13 @@ class DepthParallaxValidator:
                     depth_map = np.array(output["depth"], dtype=np.float32)
             except Exception as e:
                 logger.warning(f"Depth pipeline inference failed: {e}. Using fallback gradient depth.")
-                depth_map = self._fallback_depth_estimate(pil_img)
+                depth_map = self._fallback_depth_estimate(infer_img)
         else:
-            depth_map = self._fallback_depth_estimate(pil_img)
+            depth_map = self._fallback_depth_estimate(infer_img)
+
+        # Restore original spatial resolution for pixel-aligned edge analysis
+        if depth_map.shape[0] != orig_h or depth_map.shape[1] != orig_w:
+            depth_map = cv2.resize(depth_map, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
 
         return depth_map
 

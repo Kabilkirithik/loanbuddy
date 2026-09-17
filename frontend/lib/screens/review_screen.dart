@@ -203,14 +203,55 @@ class _ReviewScreenState extends State<ReviewScreen> {
           FilledButton(
             onPressed: _sending ? null : _submit,
             child: _sending
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.white),
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Running 3-Layer Audit...',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   )
                 : const Text('Send for verification'),
           ),
+          if (_sending) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: const Column(
+                children: [
+                  Text(
+                    '⚡ Evaluating Depth, Moiré & Satellite Alignment',
+                    style: TextStyle(
+                      color: Color(0xFF93C5FD),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Local computer vision models are verifying 3D physical reality...',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           TextButton(
             onPressed: _sending ? null : () => Navigator.of(context).pop(false),

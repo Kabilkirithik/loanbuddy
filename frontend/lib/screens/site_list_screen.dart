@@ -60,7 +60,7 @@ class SiteRepository {
           tranche: 2,
           amountPaise: 60000000,
           status: MilestoneStatus.due,
-          lastApprovedPhotoUrl: 'https://cdn.example/ms_1.jpg',
+          lastApprovedPhotoUrl: null,
         ),
         Milestone(
           id: 'ms_3',

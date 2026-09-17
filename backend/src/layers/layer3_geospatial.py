@@ -67,26 +67,34 @@ class GeospatialValidator:
                 return cached
 
         try:
+            from concurrent.futures import ThreadPoolExecutor
             cx, cy = self._deg2num(coords.latitude, coords.longitude, zoom)
-            tiles = []
             headers = {"User-Agent": "Mozilla/5.0 (LoanBuddyVisionAgent/1.0; +https://github.com)"}
 
-            # Stitch a 2x2 grid (512x512) centered around the coordinate
-            for dy in [-1, 0]:
-                row = []
-                for dx in [0, 1]:
-                    url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{cy+dy}/{cx+dx}"
-                    resp = requests.get(url, headers=headers, timeout=6.0)
+            def _fetch_tile(coords_tuple):
+                dy, dx = coords_tuple
+                url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{cy+dy}/{cx+dx}"
+                try:
+                    resp = requests.get(url, headers=headers, timeout=2.5)
                     if resp.status_code == 200:
                         arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
                         t = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-                        row.append(t if t is not None else np.zeros((256, 256, 3), dtype=np.uint8))
-                    else:
-                        row.append(np.zeros((256, 256, 3), dtype=np.uint8))
-                tiles.append(np.hstack(row))
+                        if t is not None:
+                            return (dy, dx, t)
+                except Exception:
+                    pass
+                return (dy, dx, np.zeros((256, 256, 3), dtype=np.uint8))
 
-            stitched = np.vstack(tiles)
-            if stitched is not None and stitched.shape[0] > 0:
+            coords_list = [(-1, 0), (-1, 1), (0, 0), (0, 1)]
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                results = list(executor.map(_fetch_tile, coords_list))
+
+            tile_dict = {(r[0], r[1]): r[2] for r in results}
+            row1 = np.hstack([tile_dict[(-1, 0)], tile_dict[(-1, 1)]])
+            row2 = np.hstack([tile_dict[(0, 0)], tile_dict[(0, 1)]])
+            stitched = np.vstack([row1, row2])
+
+            if stitched is not None and stitched.shape[0] > 0 and not np.all(stitched == 0):
                 cv2.imwrite(cache_file, stitched)
                 return stitched
         except Exception as e:

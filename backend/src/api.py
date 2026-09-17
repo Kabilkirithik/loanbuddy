@@ -42,6 +42,16 @@ app.add_middleware(
 
 pipeline = SiteInspectionPipeline()
 
+@app.on_event("startup")
+def warmup_models():
+    """Pre-warm neural models during server startup so client requests never wait for downloads."""
+    try:
+        logger.info("Pre-warming Depth-Anything-V2 neural model...")
+        _ = pipeline.layer1.pipeline
+        logger.info("Vision models warmed up and ready.")
+    except Exception as e:
+        logger.warning(f"Model pre-warm notice: {e}")
+
 # In-memory registry to prevent reuse/replay attacks (SHA-256 deduplication)
 SEEN_IMAGE_HASHES: set = set()
 
@@ -69,7 +79,7 @@ DEMO_SITES: List[SiteSchema] = [
                 tranche=2,
                 amount_paise=60000000,
                 status="due",
-                last_approved_photo_url="https://cdn.example/ms_1.jpg"
+                last_approved_photo_url=None
             ),
             MilestoneSchema(
                 id="ms_3",

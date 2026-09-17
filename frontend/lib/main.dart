@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,8 +32,10 @@ Future<void> main() async {
     authToken: const String.fromEnvironment('AUTH_TOKEN', defaultValue: 'dev'),
   );
 
-  // Anything stranded from a previous session goes out first.
-  unawaited(submissions.flushQueue());
+  // Anything stranded from a previous session goes out first on native.
+  if (!kIsWeb) {
+    unawaited(submissions.flushQueue());
+  }
 
   runApp(SiteCheckApp(submissions: submissions));
 }
