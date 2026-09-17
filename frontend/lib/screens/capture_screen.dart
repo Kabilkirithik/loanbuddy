@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -87,7 +88,10 @@ class _CaptureScreenState extends State<CaptureScreen>
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     _camera = controller;
-    setState(() => _cameraReady = controller.initialize());
+    final ready = controller.initialize();
+    setState(() {
+      _cameraReady = ready;
+    });
   }
 
   Future<void> _startLocation() async {
@@ -208,15 +212,20 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Future<(String, String)> _deviceFacts() async {
+    if (kIsWeb) {
+      return ('Web Browser', 'web-client');
+    }
     final info = DeviceInfoPlugin();
-    if (Platform.isAndroid) {
-      final a = await info.androidInfo;
-      return ('${a.manufacturer} ${a.model}', a.id);
-    }
-    if (Platform.isIOS) {
-      final i = await info.iosInfo;
-      return (i.utsname.machine, i.identifierForVendor ?? 'unknown');
-    }
+    try {
+      if (Platform.isAndroid) {
+        final a = await info.androidInfo;
+        return ('${a.manufacturer} ${a.model}', a.id);
+      }
+      if (Platform.isIOS) {
+        final i = await info.iosInfo;
+        return (i.utsname.machine, i.identifierForVendor ?? 'unknown');
+      }
+    } catch (_) {}
     return ('unknown', 'unknown');
   }
 
