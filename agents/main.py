@@ -34,7 +34,7 @@ from pathlib import Path
 
 from crewai import Crew, Process
 
-from agents import document_agent, fraud_agent
+from agents import document_agent, vision_agent, fraud_agent
 from tasks import build_tasks
 
 # Brief pause between scenarios to avoid tripping the free-tier rate limit
@@ -73,16 +73,23 @@ def run_scenario(scenario: dict, index: int, total: int):
     print("#" * 70 + "\n")
 
     tasks = build_tasks(
-        document_agent,
-        fraud_agent,
-        scenario["loan_doc_text"],
-        scenario["claimed_progress"],
-        scenario["elapsed_days"],
-        scenario["invoice_data"],
+        document_agent=document_agent,
+        vision_agent=vision_agent,
+        fraud_agent=fraud_agent,
+        loan_doc_text=scenario["loan_doc_text"],
+        claimed_progress=scenario["claimed_progress"],
+        elapsed_days=scenario["elapsed_days"],
+        invoice_data=scenario["invoice_data"],
+        media_path=scenario.get("media_path", "building.png"),
+        expected_latitude=scenario.get("expected_latitude", 12.9716),
+        expected_longitude=scenario.get("expected_longitude", 77.5946),
+        live_latitude=scenario.get("live_latitude", 12.9716),
+        live_longitude=scenario.get("live_longitude", 77.5946),
+        loan_id=scenario.get("loan_id", f"LN-SCENARIO-{index}"),
     )
 
     crew = Crew(
-        agents=[document_agent, fraud_agent],
+        agents=[document_agent, vision_agent, fraud_agent],
         tasks=tasks,
         process=Process.sequential,
         verbose=True,

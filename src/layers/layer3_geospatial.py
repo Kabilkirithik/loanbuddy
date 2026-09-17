@@ -42,13 +42,65 @@ class GeospatialValidator:
         c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
         return float(R * c)
 
-    def fetch_google_maps_reference(
+    def _deg2num(self, lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
+        """Convert latitude and longitude to Slippy Map tile numbers."""
+        lat_rad = math.radians(lat_deg)
+        n = 2.0 ** zoom
+        xtile = int((lon_deg + 180.0) / 360.0 * n)
+        ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+        return xtile, ytile
+
+    def fetch_free_satellite_reference(self, coords: GPSCoordinate, zoom: int = 18) -> Optional[np.ndarray]:
+        """Fetch high-resolution real-world satellite imagery using free public ESRI World Imagery tiles.
+        
+        Requires NO API keys and provides 30cm-50cm per pixel satellite imagery worldwide.
+        Tiles are cached locally in cache/satellite/ to ensure fast offline performance.
+        """
+        import os
+        cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "cache", "satellite")
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, f"tile_{coords.latitude:.5f}_{coords.longitude:.5f}_z{zoom}.jpg")
+
+        if os.path.exists(cache_file):
+            cached = cv2.imread(cache_file)
+            if cached is not None:
+                return cached
+
+        try:
+            cx, cy = self._deg2num(coords.latitude, coords.longitude, zoom)
+            tiles = []
+            headers = {"User-Agent": "Mozilla/5.0 (LoanBuddyVisionAgent/1.0; +https://github.com)"}
+
+            # Stitch a 2x2 grid (512x512) centered around the coordinate
+            for dy in [-1, 0]:
+                row = []
+                for dx in [0, 1]:
+                    url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{cy+dy}/{cx+dx}"
+                    resp = requests.get(url, headers=headers, timeout=6.0)
+                    if resp.status_code == 200:
+                        arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
+                        t = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                        row.append(t if t is not None else np.zeros((256, 256, 3), dtype=np.uint8))
+                    else:
+                        row.append(np.zeros((256, 256, 3), dtype=np.uint8))
+                tiles.append(np.hstack(row))
+
+            stitched = np.vstack(tiles)
+            if stitched is not None and stitched.shape[0] > 0:
+                cv2.imwrite(cache_file, stitched)
+                return stitched
+        except Exception as e:
+            logger.warning(f"Free ESRI satellite fetch failed: {e}")
+
+        return None
+
+    def fetch_reference_imagery(
         self,
         coords: GPSCoordinate,
         view_type: str = "satellite",
-        zoom: int = 19
+        zoom: int = 18
     ) -> Tuple[np.ndarray, str]:
-        """Fetch satellite or street-view reference image from Google Maps Static API."""
+        """Fetch satellite reference image (Google Maps if API key provided, or free high-res ESRI satellite)."""
         if self.google_maps_api_key:
             try:
                 if view_type == "streetview":
@@ -68,16 +120,21 @@ class GeospatialValidator:
                         "key": self.google_maps_api_key
                     }
 
-                resp = requests.get(url, params=params, timeout=12.0)
+                resp = requests.get(url, params=params, timeout=10.0)
                 if resp.status_code == 200 and "image" in resp.headers.get("Content-Type", ""):
                     img_array = np.asarray(bytearray(resp.content), dtype=np.uint8)
                     cv_img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
                     if cv_img is not None:
                         return cv_img, f"google_maps_{view_type}"
             except Exception as e:
-                logger.warning(f"Google Maps API fetch failed: {e}. Using synthetic/cached tile.")
+                logger.warning(f"Google Maps API fetch failed: {e}. Falling back to free satellite imagery.")
 
-        # Fallback synthetic satellite construction tile for testing/offline environments
+        # Zero-API-Key Free High-Res Satellite Imagery (ESRI World Imagery)
+        free_sat = self.fetch_free_satellite_reference(coords, zoom=zoom)
+        if free_sat is not None:
+            return free_sat, "free_esri_satellite_tile"
+
+        # Fallback synthetic satellite construction tile for isolated offline environments
         return self._generate_synthetic_reference(coords), "synthetic_reference_tile"
 
     def _generate_synthetic_reference(self, coords: GPSCoordinate) -> np.ndarray:
@@ -200,7 +257,7 @@ class GeospatialValidator:
                 cv_ref = cv2.cvtColor(np.array(reference_image), cv2.COLOR_RGB2BGR)
             ref_source = "provided_reference"
         else:
-            cv_ref, ref_source = self.fetch_google_maps_reference(expected_gps, view_type="satellite")
+            cv_ref, ref_source = self.fetch_reference_imagery(expected_gps, view_type="satellite")
 
         # Step 3: Structural Matching via LightGlue / Feature Alignment
         total_matches, inliers_count, alignment_score, match_details = self.match_features_lightglue(
@@ -231,6 +288,6 @@ class GeospatialValidator:
             lightglue_matches_count=total_matches,
             ransac_inliers_count=inliers_count,
             structural_alignment_score=round(alignment_score, 3),
-            details=match_details,
+            details=match_details,1 
             rejection_reasons=rejection_reasons
         )

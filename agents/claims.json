@@ -1,16 +1,28 @@
 [
   {
-    "name": "Legitimate claim - Foundation complete",
+    "name": "Synthetic AI Attack — ChatGPT Generated Site Photo",
     "loan_doc_text": "Sample BOQ: Foundation work - 20% of loan amount. 1st floor slab casting - 40% of loan amount. Roofing - 70% of loan amount. Finishing - 100% of loan amount.",
-    "claimed_progress": "Foundation complete",
-    "elapsed_days": 10,
-    "invoice_data": "Cement and steel rod purchase invoices dated day 3 and day 6"
+    "claimed_progress": "1st floor slab casting",
+    "elapsed_days": 25,
+    "invoice_data": "RMC concrete supplier invoice #4820 dated day 22 ($18,000)",
+    "media_path": "building.png",
+    "expected_latitude": 12.9716,
+    "expected_longitude": 77.5946,
+    "live_latitude": 12.9716,
+    "live_longitude": 77.5946,
+    "loan_id": "LN-2026-AI-FAKE-01"
   },
   {
-    "name": "Fraudulent claim - Roofing complete too early",
+    "name": "Premature Timeline Anomaly — Roofing Claimed After 10 Days",
     "loan_doc_text": "Sample BOQ: Foundation work - 20% of loan amount. 1st floor slab casting - 40% of loan amount. Roofing - 70% of loan amount. Finishing - 100% of loan amount.",
     "claimed_progress": "Roofing complete",
     "elapsed_days": 10,
-    "invoice_data": "Cement purchase invoice dated day 8"
+    "invoice_data": "Cement purchase invoice dated day 8",
+    "media_path": "building.png",
+    "expected_latitude": 12.9716,
+    "expected_longitude": 77.5946,
+    "live_latitude": 12.9716,
+    "live_longitude": 77.5946,
+    "loan_id": "LN-2026-PREMATURE-02"
   }
 ]

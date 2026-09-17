@@ -132,3 +132,134 @@ class FraudCheckTool(BaseTool):
         if flags:
             return "ANOMALY DETECTED:\n" + "\n".join(f"- {f}" for f in flags)
         return "No anomaly detected. Progress timeline is consistent with elapsed time and invoices."
+
+
+# ---------------------------------------------------------------------------
+# Site Inspection Vision Agent tool
+# ---------------------------------------------------------------------------
+
+import sys
+from pathlib import Path
+_root_dir = str(Path(__file__).resolve().parent.parent)
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
+
+class SiteInspectionInput(BaseModel):
+    media_path: str = Field(
+        ...,
+        description="Path to the user-submitted construction site photo or video (e.g. 'building.png', 'site.mp4')."
+    )
+    construction_stage: str = Field(
+        default="Foundation",
+        description="The construction milestone claimed by the borrower (e.g. 'Foundation', 'Slab', 'Roofing', 'Finishing')."
+    )
+    expected_latitude: float = Field(
+        default=12.9716,
+        description="Official registered site latitude from loan agreement."
+    )
+    expected_longitude: float = Field(
+        default=77.5946,
+        description="Official registered site longitude from loan agreement."
+    )
+    live_latitude: float = Field(
+        default=12.9716,
+        description="Device live GPS latitude at time of capture."
+    )
+    live_longitude: float = Field(
+        default=77.5946,
+        description="Device live GPS longitude at time of capture."
+    )
+    loan_id: str = Field(
+        default="LN-CREW-VERIFY",
+        description="Loan application ID."
+    )
+
+
+class SiteInspectionTool(BaseTool):
+    name: str = "Site Vision Inspector"
+    description: str = (
+        "Executes a 3-layer anti-fraud physical verification on submitted construction media: "
+        "Layer 1 tests 3D depth & motion parallax with Depth-Anything-V2 to reject 2D screen/paper attacks; "
+        "Layer 2 detects screen recapture, Moiré frequency grids, and C2PA GenAI (ChatGPT/DALL-E/Midjourney) fakes; "
+        "Layer 3 verifies device GPS geofence and matches structural keypoints against satellite imagery via LightGlue."
+    )
+    args_schema: Type[BaseModel] = SiteInspectionInput
+
+    def _run(
+        self,
+        media_path: str,
+        construction_stage: str = "Foundation",
+        expected_latitude: float = 12.9716,
+        expected_longitude: float = 77.5946,
+        live_latitude: float = 12.9716,
+        live_longitude: float = 77.5946,
+        loan_id: str = "LN-CREW-VERIFY"
+    ) -> str:
+        # Resolve media path if relative
+        media_file = Path(media_path)
+        if not media_file.is_absolute():
+            # Check local agents dir first, then parent project dir
+            local_cand = Path(__file__).parent / media_path
+            parent_cand = Path(__file__).parent.parent / media_path
+            if local_cand.exists():
+                media_file = local_cand
+            elif parent_cand.exists():
+                media_file = parent_cand
+
+        if not media_file.exists():
+            return f"SITE INSPECTION ERROR: Media file '{media_path}' could not be found."
+
+        from src.models import LoanApplicationContext, GPSCoordinate
+        from src.pipeline import SiteInspectionPipeline
+
+        loan_context = LoanApplicationContext(
+            loan_id=loan_id,
+            borrower_name="Loan Applicant",
+            project_name="Loan Construction Site",
+            construction_stage=construction_stage,
+            expected_location=GPSCoordinate(
+                latitude=expected_latitude,
+                longitude=expected_longitude
+            )
+        )
+
+        live_gps = GPSCoordinate(
+            latitude=live_latitude,
+            longitude=live_longitude
+        )
+
+        pipeline = SiteInspectionPipeline()
+        report = pipeline.run_inspection(
+            media_input=str(media_file),
+            loan_context=loan_context,
+            live_gps=live_gps
+        )
+
+        # Format structured findings for CrewAI agent reasoning
+        c2pa_info = report.layer2_recapture.details.get("c2pa_provenance", {})
+        c2pa_sigs = ", ".join(c2pa_info.get("signatures", [])) if c2pa_info.get("detected") else "None"
+
+        summary = [
+            f"SITE INSPECTION AUDIT REPORT ({report.inspection_id}):",
+            f"- Final Physical Verdict: {report.final_decision.value}",
+            f"- Overall Visual Integrity Score: {report.overall_confidence_score * 100:.1f}%",
+            f"- Layer 1 (Depth & Motion Parallax): {report.layer1_depth.verdict.value} "
+            f"(2D Flat Attack: {report.layer1_depth.is_flat_surface}, Depth StdDev: {report.layer1_depth.depth_std_dev}, "
+            f"Plane R²: {report.layer1_depth.plane_fit_r2})",
+            f"- Layer 2 (Recapture & GenAI): {report.layer2_recapture.verdict.value} "
+            f"(Screen Recapture: {report.layer2_recapture.screen_recapture_detected}, "
+            f"AI Generated: {report.layer2_recapture.ai_generation_detected}, "
+            f"C2PA Signatures: {c2pa_sigs}, Moiré Energy: {report.layer2_recapture.local_moire_energy})",
+            f"- Layer 3 (Geospatial Lock): {report.layer3_geospatial.verdict.value} "
+            f"(Distance: {report.layer3_geospatial.gps_distance_meters:.1f}m, Geofence OK: {report.layer3_geospatial.within_geofence}, "
+            f"Structural Matches: {report.layer3_geospatial.lightglue_matches_count}, Inliers: {report.layer3_geospatial.ransac_inliers_count})"
+        ]
+
+        if report.flagged_reasons:
+            summary.append("- Flagged Security Violations:")
+            for reason in report.flagged_reasons:
+                summary.append(f"  * {reason}")
+
+        summary.append(f"- Recommended Action: {report.recommended_action}")
+        return "\n".join(summary)
