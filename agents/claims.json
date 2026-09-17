@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Legitimate claim - Foundation complete",
+    "loan_doc_text": "Sample BOQ: Foundation work - 20% of loan amount. 1st floor slab casting - 40% of loan amount. Roofing - 70% of loan amount. Finishing - 100% of loan amount.",
+    "claimed_progress": "Foundation complete",
+    "elapsed_days": 10,
+    "invoice_data": "Cement and steel rod purchase invoices dated day 3 and day 6"
+  },
+  {
+    "name": "Fraudulent claim - Roofing complete too early",
+    "loan_doc_text": "Sample BOQ: Foundation work - 20% of loan amount. 1st floor slab casting - 40% of loan amount. Roofing - 70% of loan amount. Finishing - 100% of loan amount.",
+    "claimed_progress": "Roofing complete",
+    "elapsed_days": 10,
+    "invoice_data": "Cement purchase invoice dated day 8"
+  }
+]
