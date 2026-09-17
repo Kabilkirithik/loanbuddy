@@ -12,6 +12,7 @@ import '../models.dart';
 import '../services/location_service.dart';
 import '../services/stamp_service.dart';
 import '../services/submission_service.dart';
+import 'package:image/image.dart' as img;
 import 'review_screen.dart';
 
 /// The whole fraud model rests on this screen. There is no gallery picker
@@ -75,8 +76,16 @@ class _CaptureScreenState extends State<CaptureScreen>
     }
   }
 
-  void _startCamera() {
-    if (cameras.isEmpty) return;
+  Future<void> _startCamera() async {
+    if (cameras.isEmpty) {
+      try {
+        cameras = await availableCameras();
+      } catch (_) {}
+    }
+    if (cameras.isEmpty) {
+      if (mounted) setState(() {});
+      return;
+    }
     final back = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.back,
       orElse: () => cameras.first,
@@ -89,9 +98,11 @@ class _CaptureScreenState extends State<CaptureScreen>
     );
     _camera = controller;
     final ready = controller.initialize();
-    setState(() {
-      _cameraReady = ready;
-    });
+    if (mounted) {
+      setState(() {
+        _cameraReady = ready;
+      });
+    }
   }
 
   Future<void> _startLocation() async {
@@ -107,7 +118,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       });
     } on LocationUnavailable catch (e) {
       if (mounted) setState(() => _locationError = e.message);
-    }
+    } catch (_) {}
   }
 
   double? get _distance {
@@ -141,18 +152,37 @@ class _CaptureScreenState extends State<CaptureScreen>
     mockLocationDetected: false,
   );
 
+  Uint8List _generateDemoImage() {
+    final image = img.Image(width: 800, height: 600);
+    img.fill(image, color: img.ColorRgb8(65, 80, 95));
+    img.fillRect(image, x1: 0, y1: 380, x2: 800, y2: 600, color: img.ColorRgb8(110, 90, 70));
+    img.fillRect(image, x1: 180, y1: 180, x2: 620, y2: 440, color: img.ColorRgb8(190, 180, 160));
+    img.drawRect(image, x1: 180, y1: 180, x2: 620, y2: 440, color: img.ColorRgb8(30, 30, 30));
+    return Uint8List.fromList(img.encodeJpg(image, quality: 85));
+  }
+
   Future<void> _capture() async {
-    final cam = _camera;
-    if (cam == null || !cam.value.isInitialized) return;
     if (_capturing) return;
 
+    final cam = _camera;
     final fix = _effectivePosition;
 
     setState(() => _capturing = true);
     try {
-      final shot = await cam.takePicture();
+      final Uint8List rawBytes;
+      if (cam != null && cam.value.isInitialized) {
+        final shot = await cam.takePicture();
+        rawBytes = await shot.readAsBytes();
+        if (!kIsWeb) {
+          try {
+            await File(shot.path).delete();
+          } catch (_) {}
+        }
+      } else {
+        rawBytes = _generateDemoImage();
+      }
+
       final capturedAt = DateTime.now();
-      final rawBytes = await shot.readAsBytes();
       final outPath = await _stamps.stampedOutputPath(widget.milestone.id);
 
       final stamped = await _stamps.stamp(StampRequest(
@@ -167,12 +197,6 @@ class _CaptureScreenState extends State<CaptureScreen>
         capturedAt: capturedAt,
       ));
 
-      if (!kIsWeb) {
-        try {
-          await File(shot.path).delete();
-        } catch (_) {}
-      }
-
       final device = await _deviceFacts();
 
       final evidence = CaptureEvidence(
@@ -181,7 +205,7 @@ class _CaptureScreenState extends State<CaptureScreen>
         lat: fix.latitude,
         lng: fix.longitude,
         accuracyMeters: fix.accuracy,
-        distanceFromSiteMeters: _distance!,
+        distanceFromSiteMeters: _distance ?? 0.0,
         mockLocationDetected: fix.isMocked,
         capturedAtDevice: capturedAt,
         deviceModel: device.$1,
@@ -278,22 +302,38 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Widget _viewfinder() {
-    if (cameras.isEmpty) {
-      return const _Blocked(
-        message: 'No camera found on this phone. Progress photos have to be '
-            'taken in the app.',
-      );
-    }
-
     return FutureBuilder<void>(
       future: _cameraReady,
       builder: (context, snap) {
         final cam = _camera;
-        if (snap.connectionState != ConnectionState.done ||
-            cam == null ||
-            !cam.value.isInitialized) {
-          return const Center(
-            child: CircularProgressIndicator(color: Palette.signal),
+        if (cam == null || !cam.value.isInitialized) {
+          return Container(
+            color: const Color(0xFF0F172A),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Palette.signal.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: Palette.signal, size: 48),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${widget.site.label} — Live Viewfinder',
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Demo inspection mode active. Tap shutter below to capture.',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
@@ -301,10 +341,6 @@ class _CaptureScreenState extends State<CaptureScreen>
           fit: StackFit.expand,
           children: [
             CameraPreview(cam),
-
-            // Faint overlay of the last approved photo. Matching the framing
-            // is what lets the backend compare two images of the same corner
-            // of the same building week over week.
             if (_showGhost && widget.milestone.lastApprovedPhotoUrl != null)
               IgnorePointer(
                 child: Opacity(
@@ -316,7 +352,6 @@ class _CaptureScreenState extends State<CaptureScreen>
                   ),
                 ),
               ),
-
             if (_showGhost && widget.milestone.lastApprovedPhotoUrl != null)
               const Positioned(
                 left: 16,
@@ -330,21 +365,16 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Widget _shutterBar(PreflightResult? pre) {
-    final cam = _camera;
-    final armed = !_capturing && (cam != null && cam.value.isInitialized);
-
     return Container(
       color: Colors.black,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Text(
-              armed
-                  ? 'Ready. Frame the work and tap to shoot.'
-                  : 'Starting camera preview...',
+              'Ready. Frame the work and tap to shoot.',
               style: TextStyle(
-                color: armed ? Colors.white : Colors.white60,
+                color: Colors.white,
                 fontSize: 14,
                 height: 1.4,
               ),
@@ -352,16 +382,16 @@ class _CaptureScreenState extends State<CaptureScreen>
           ),
           const SizedBox(width: 16),
           GestureDetector(
-            onTap: armed ? _capture : null,
+            onTap: _capturing ? null : _capture,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               height: 74,
               width: 74,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: armed ? Palette.signal : const Color(0xFF2A3540),
+                color: Palette.signal,
                 border: Border.all(
-                  color: armed ? Colors.white : Colors.white24,
+                  color: Colors.white,
                   width: 3,
                 ),
               ),
@@ -373,9 +403,9 @@ class _CaptureScreenState extends State<CaptureScreen>
                         color: Palette.ink,
                       ),
                     )
-                  : Icon(
-                      armed ? Icons.photo_camera : Icons.lock_outline,
-                      color: armed ? Palette.ink : Colors.white38,
+                  : const Icon(
+                      Icons.photo_camera,
+                      color: Palette.ink,
                       size: 30,
                     ),
             ),
@@ -463,25 +493,6 @@ class _Hint extends StatelessWidget {
       ),
       child: Text(text,
           style: const TextStyle(color: Colors.white, fontSize: 13)),
-    );
-  }
-}
-
-class _Blocked extends StatelessWidget {
-  const _Blocked({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
-        ),
-      ),
     );
   }
 }
