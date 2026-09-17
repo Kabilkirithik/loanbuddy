@@ -4,7 +4,7 @@ An AI-powered anti-fraud inspection system that automates the physical visit of 
 
 ---
 
-## The 3-Layer Defense Architecture
+## The 3-Layer Local Defense Architecture
 
 ```
 User Video / Photos + Live GPS
@@ -12,26 +12,26 @@ User Video / Photos + Live GPS
         ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ Layer 1: Local Depth & Motion Parallax Check (Physical Reality)        │
-│ • Model: Depth-Anything-V2 (Depth-Anything-V2-Small-hf)                │
+│ • Model: Depth-Anything-V2 (Depth-Anything-V2-Small-hf via PyTorch)    │
 │ • Metrics: Depth-Edge Coincidence, Plane Fitting (R²), Motion Parallax │
 │ • Defense: Rejects 2D presentation attacks (screens, paper photos)     │
 └────────────────────────────────────┬───────────────────────────────────┘
                                      │ Passed
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Layer 2: Digital Recapture & GenAI Artifact Check                      │
-│ • APIs: Sightengine & Hive AI moderation endpoints                     │
-│ • Local Fallback: 2D-FFT Moiré frequency detector & texture analysis   │
-│ • Defense: Rejects 4K monitor recapture and AI-synthesized scenes      │
+│ Layer 2: Local Recapture & GenAI Artifact Check (Zero External APIs)   │
+│ • C2PA Parser: Local JUMBF manifest inspector (OpenAI/DALL-E/Midjourney)│
+│ • 2D-FFT Moiré: Subpixel periodic grid frequency spike detector        │
+│ • Defense: Rejects monitor screen replays and AI-synthesized scenes    │
 └────────────────────────────────────┬───────────────────────────────────┘
                                      │ Passed
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Layer 3: Geospatial Identity Lock                                      │
-│ • GPS Geofencing: Haversine distance vs loan application registry      │
-│ • Reference Imagery: Google Maps Static API (Satellite & Street View)  │
-│ • Structural Matching: LightGlue structural keypoint inlier alignment  │
-│ • Defense: Rejects videos filmed at wrong physical locations           │
+│ Layer 3: Local Geospatial Identity Lock (Zero External APIs)           │
+│ • GPS Geofencing: Haversine distance vs loan origination registry      │
+│ • Reference Imagery: Free ESRI World Imagery High-Res Satellite Cache  │
+│ • Structural Matching: Local LightGlue / SIFT keypoint inlier alignment│
+│ • Defense: Rejects photos/videos filmed at wrong physical locations    │
 └────────────────────────────────────┬───────────────────────────────────┘
                                      │
                                      ▼
@@ -81,24 +81,21 @@ uv sync
 
 ## Configuration (`.env`)
 
-You can customize thresholds and enable commercial API keys via environment variables or a `.env` file:
+The system operates **100% locally with zero external API keys required**.
+You can customize local security thresholds in `.env`:
 
 ```ini
-# Commercial Detection APIs (Optional; high-fidelity local fallbacks built-in)
-INSPECT_SIGHTENGINE_API_USER=your_user_id
-INSPECT_SIGHTENGINE_API_SECRET=your_secret_key
-INSPECT_HIVE_API_KEY=your_hive_token
-
-# Google Maps Static API
-INSPECT_GOOGLE_MAPS_API_KEY=your_google_maps_key
-
-# Security Thresholds
+# Security Thresholds (All checks run 100% locally)
 INSPECT_DEPTH_EDGE_COINCIDENCE_MIN=1.10
 INSPECT_PLANE_FIT_R2_MAX_THRESHOLD=0.88
 INSPECT_SCREEN_RECAPTURE_MAX_CONFIDENCE=0.55
 INSPECT_AI_GENERATED_MAX_CONFIDENCE=0.60
+INSPECT_LOCAL_MOIRE_ENERGY_THRESHOLD=0.65
 INSPECT_GPS_TOLERANCE_METERS=100.0
 INSPECT_LIGHTGLUE_MIN_INLIER_MATCHES=15
+
+# Satellite Imagery: Uses free worldwide ESRI World Imagery tiles automatically
+# AI Detection: Uses local C2PA JUMBF container parser and 2D-FFT Moiré detector
 ```
 
 ---

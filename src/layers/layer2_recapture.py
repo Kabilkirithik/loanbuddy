@@ -238,7 +238,7 @@ class DigitalRecaptureValidator:
         local_moire_score, moire_details = self.analyze_local_moire_patterns(cv_img)
         local_ai_score, ai_details = self.detect_ai_generation_local(cv_img)
 
-        provider_used = "c2pa_provenance" if c2pa_detected else "local_fallback"
+        provider_used = "c2pa_provenance" if c2pa_detected else "local_engine"
         screen_recapture_score = local_moire_score
         ai_generation_score = max(local_ai_score, c2pa_ai_score)
         extra_details: Dict[str, Any] = {

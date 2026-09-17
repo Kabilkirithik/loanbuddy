@@ -152,14 +152,14 @@ class _SiteListScreenState extends State<SiteListScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError) {
-              return _Message(
+              return const _Message(
                 title: 'Could not load your sites',
                 body: 'Check your connection and pull down to try again.',
               );
             }
             final sites = snap.data ?? const <Site>[];
             if (sites.isEmpty) {
-              return _Message(
+              return const _Message(
                 title: 'No sites yet',
                 body: 'Sites appear here once your lender registers them '
                     'against your loan.',

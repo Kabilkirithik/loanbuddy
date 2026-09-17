@@ -70,7 +70,7 @@ class Layer2RecaptureResult(BaseModel):
     screen_recapture_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score for screen recapture")
     ai_generation_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score for AI-generated media")
     local_moire_energy: float = Field(..., ge=0.0, le=1.0, description="Local spectral peak energy from 2D FFT")
-    provider_used: str = Field(..., description="Provider: 'sightengine', 'hive', or 'local_fallback'")
+    provider_used: str = Field(..., description="Provider: 'local_engine', 'c2pa_provenance', or commercial provider")
     details: Dict[str, Any] = Field(default_factory=dict)
     rejection_reasons: List[str] = Field(default_factory=list)
 
