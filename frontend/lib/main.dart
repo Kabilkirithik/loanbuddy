@@ -27,7 +27,7 @@ Future<void> main() async {
   final submissions = SubmissionService(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://loanbuddy-production.up.railway.app',
+      defaultValue: 'http://127.0.0.1:8090',
     ),
     authToken: const String.fromEnvironment('AUTH_TOKEN', defaultValue: 'dev'),
   );
