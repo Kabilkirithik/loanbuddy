@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../main.dart';
 import '../models.dart';
 import '../services/submission_service.dart';
+import 'verification_result_screen.dart';
 
 /// Last stop before the photo leaves the phone. The borrower can retake, but
 /// cannot edit — everything shown here is already burned into the file.
@@ -54,13 +55,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     switch (result.state) {
       case SubmissionState.submitted:
-        _showOutcome(
-          title: 'Sent for verification',
-          body: 'Your lender will see the result of the automatic checks '
-              'within a few minutes. You will be told if anything needs a '
-              'second photo.',
-          pop: true,
-        );
+        if (result.report != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => VerificationResultScreen(
+                report: result.report!,
+                image: widget.image,
+                site: widget.site,
+                milestone: widget.milestone,
+                captureRef: result.serverRef,
+              ),
+            ),
+          );
+        } else {
+          _showOutcome(
+            title: 'Sent for verification',
+            body: 'Inspection submitted successfully. Ref: ${result.serverRef ?? ""}',
+            pop: true,
+          );
+        }
       case SubmissionState.queued:
         _showOutcome(
           title: 'Saved on your phone',

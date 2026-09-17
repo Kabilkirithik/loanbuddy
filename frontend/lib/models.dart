@@ -197,3 +197,137 @@ class PreflightResult {
 
   bool get canSubmit => withinGeofence && accuracyAcceptable && clockPlausible;
 }
+
+/// 3-Layer Anti-Fraud Inspection Report returned by the backend portal.
+class Layer1DepthReport {
+  final String verdict;
+  final double confidenceScore;
+  final double depthStdDev;
+  final double planeFitR2;
+  final bool isFlatSurface;
+  final bool? motionParallaxDetected;
+  final List<String> reasons;
+
+  const Layer1DepthReport({
+    required this.verdict,
+    required this.confidenceScore,
+    required this.depthStdDev,
+    required this.planeFitR2,
+    required this.isFlatSurface,
+    this.motionParallaxDetected,
+    required this.reasons,
+  });
+
+  factory Layer1DepthReport.fromJson(Map<String, dynamic> j) => Layer1DepthReport(
+        verdict: j['verdict'] as String? ?? 'UNKNOWN',
+        confidenceScore: (j['confidence_score'] as num?)?.toDouble() ?? 0.0,
+        depthStdDev: (j['depth_std_dev'] as num?)?.toDouble() ?? 0.0,
+        planeFitR2: (j['plane_fit_r2'] as num?)?.toDouble() ?? 0.0,
+        isFlatSurface: j['is_flat_surface'] as bool? ?? false,
+        motionParallaxDetected: j['motion_parallax_detected'] as bool?,
+        reasons: (j['reasons'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      );
+}
+
+class Layer2RecaptureReport {
+  final String verdict;
+  final double confidenceScore;
+  final bool screenRecaptureDetected;
+  final bool aiGenerationDetected;
+  final double localMoireEnergy;
+  final List<String> reasons;
+  final Map<String, dynamic> details;
+
+  const Layer2RecaptureReport({
+    required this.verdict,
+    required this.confidenceScore,
+    required this.screenRecaptureDetected,
+    required this.aiGenerationDetected,
+    required this.localMoireEnergy,
+    required this.reasons,
+    required this.details,
+  });
+
+  factory Layer2RecaptureReport.fromJson(Map<String, dynamic> j) => Layer2RecaptureReport(
+        verdict: j['verdict'] as String? ?? 'UNKNOWN',
+        confidenceScore: (j['confidence_score'] as num?)?.toDouble() ?? 0.0,
+        screenRecaptureDetected: j['screen_recapture_detected'] as bool? ?? false,
+        aiGenerationDetected: j['ai_generation_detected'] as bool? ?? false,
+        localMoireEnergy: (j['local_moire_energy'] as num?)?.toDouble() ?? 0.0,
+        reasons: (j['reasons'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        details: j['details'] as Map<String, dynamic>? ?? {},
+      );
+}
+
+class Layer3GeospatialReport {
+  final String verdict;
+  final double confidenceScore;
+  final bool withinGeofence;
+  final double gpsDistanceMeters;
+  final int lightglueMatchesCount;
+  final int ransacInliersCount;
+  final List<String> reasons;
+
+  const Layer3GeospatialReport({
+    required this.verdict,
+    required this.confidenceScore,
+    required this.withinGeofence,
+    required this.gpsDistanceMeters,
+    required this.lightglueMatchesCount,
+    required this.ransacInliersCount,
+    required this.reasons,
+  });
+
+  factory Layer3GeospatialReport.fromJson(Map<String, dynamic> j) => Layer3GeospatialReport(
+        verdict: j['verdict'] as String? ?? 'UNKNOWN',
+        confidenceScore: (j['confidence_score'] as num?)?.toDouble() ?? 0.0,
+        withinGeofence: j['within_geofence'] as bool? ?? false,
+        gpsDistanceMeters: (j['gps_distance_meters'] as num?)?.toDouble() ?? 0.0,
+        lightglueMatchesCount: j['lightglue_matches_count'] as int? ?? 0,
+        ransacInliersCount: j['ransac_inliers_count'] as int? ?? 0,
+        reasons: (j['reasons'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      );
+}
+
+class InspectionReport {
+  final String inspectionId;
+  final String timestamp;
+  final double overallConfidenceScore;
+  final String finalDecision;
+  final Layer1DepthReport layer1Depth;
+  final Layer2RecaptureReport layer2Recapture;
+  final Layer3GeospatialReport layer3Geospatial;
+  final List<String> flaggedReasons;
+  final String recommendedAction;
+
+  const InspectionReport({
+    required this.inspectionId,
+    required this.timestamp,
+    required this.overallConfidenceScore,
+    required this.finalDecision,
+    required this.layer1Depth,
+    required this.layer2Recapture,
+    required this.layer3Geospatial,
+    required this.flaggedReasons,
+    required this.recommendedAction,
+  });
+
+  factory InspectionReport.fromJson(Map<String, dynamic> j) => InspectionReport(
+        inspectionId: j['inspection_id'] as String? ?? 'INSP-UNKNOWN',
+        timestamp: j['timestamp'] as String? ?? '',
+        overallConfidenceScore:
+            (j['overall_confidence_score'] as num?)?.toDouble() ?? 0.0,
+        finalDecision: j['final_decision'] as String? ?? 'UNKNOWN',
+        layer1Depth: Layer1DepthReport.fromJson(
+            j['layer1_depth'] as Map<String, dynamic>? ?? {}),
+        layer2Recapture: Layer2RecaptureReport.fromJson(
+            j['layer2_recapture'] as Map<String, dynamic>? ?? {}),
+        layer3Geospatial: Layer3GeospatialReport.fromJson(
+            j['layer3_geospatial'] as Map<String, dynamic>? ?? {}),
+        flaggedReasons: (j['flagged_reasons'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        recommendedAction: j['recommended_action'] as String? ?? '',
+      );
+}

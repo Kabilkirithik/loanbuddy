@@ -2,7 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'screens/site_list_screen.dart';
+import 'screens/inspection_home_screen.dart';
 import 'services/submission_service.dart';
 
 /// Populated once at startup. The capture screen needs the camera list
@@ -126,7 +126,7 @@ class SiteCheckApp extends StatelessWidget {
           contentTextStyle: TextStyle(color: Colors.white, fontSize: 15),
         ),
       ),
-      home: SiteListScreen(submissions: submissions),
+      home: InspectionHomeScreen(submissions: submissions),
     );
   }
 }

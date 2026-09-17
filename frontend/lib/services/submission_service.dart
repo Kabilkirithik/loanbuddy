@@ -12,7 +12,16 @@ class SubmissionResult {
   final SubmissionState state;
   final String? serverRef;
   final String? message;
-  const SubmissionResult(this.state, {this.serverRef, this.message});
+  final String? status;
+  final InspectionReport? report;
+
+  const SubmissionResult(
+    this.state, {
+    this.serverRef,
+    this.message,
+    this.status,
+    this.report,
+  });
 }
 
 /// Sends a stamped capture plus its evidence to the verification backend.
@@ -45,9 +54,12 @@ class SubmissionService {
 
       if (res.statusCode == 201 || res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
+        final reportMap = body['report'] as Map<String, dynamic>?;
         return SubmissionResult(
           SubmissionState.submitted,
           serverRef: body['capture_ref'] as String?,
+          status: body['status'] as String?,
+          report: reportMap != null ? InspectionReport.fromJson(reportMap) : null,
         );
       }
 
