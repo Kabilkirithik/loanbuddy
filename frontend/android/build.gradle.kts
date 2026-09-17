@@ -17,6 +17,10 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    val appFlutter = project(":app").extensions.findByName("flutter")
+    if (appFlutter != null) {
+        project.extensions.extraProperties.set("flutter", appFlutter)
+    }
 }
 
 tasks.register<Delete>("clean") {

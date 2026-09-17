@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "outputDirectory": "build/web",
+  "outputDirectory": "frontend/build/web",
   "rewrites": [
     {
       "source": "/(.*)",

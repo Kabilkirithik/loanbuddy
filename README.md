@@ -42,180 +42,101 @@ User Video / Photos + Live GPS
 
 ---
 
+---
+
 ## Project Structure
 
 ```
-vision_agent/
-├── src/
-│   ├── __init__.py
-│   ├── config.py              # Security thresholds and API credentials
-│   ├── models.py              # Pydantic schemas for loans, layers, reports
-│   ├── layers/
-│   │   ├── __init__.py
-│   │   ├── layer1_depth.py    # Layer 1: Depth-Anything-V2 & Parallax
-│   │   ├── layer2_recapture.py# Layer 2: Sightengine/Hive & 2D-FFT Moiré
-│   │   └── layer3_geospatial.py# Layer 3: Google Maps & LightGlue
-│   ├── pipeline.py            # End-to-end multi-layer orchestrator
-│   ├── api.py                 # FastAPI REST API service
-│   └── cli.py                 # Interactive terminal inspection CLI
-├── tests/
-│   ├── test_layer1_depth.py
-│   ├── test_layer2_recapture.py
-│   ├── test_layer3_geospatial.py
-│   └── test_pipeline.py
-├── main.py                    # Main executable entrypoint
-└── pyproject.toml
+vision_agent/ (Repository Root)
+├── Dockerfile                  # Builds backend container
+├── .dockerignore               # Ignores frontend and local python envs
+├── docker-compose.yml          # Single-command local container orchestration
+├── vercel.json                 # Configures Vercel to serve frontend/build/web
+├── netlify.toml                # Configures Netlify to serve frontend/build/web
+├── README.md                   # Full system documentation & quickstart
+├── .gitignore                  # Git ignore rules for frontend & backend
+│
+├── backend/                    # 🐍 Python Vision Service & Risk Agents
+│   ├── src/
+│   │   ├── config.py           # Security thresholds and settings
+│   │   ├── models.py           # Pydantic schemas for loans, layers, reports
+│   │   ├── layers/
+│   │   │   ├── layer1_depth.py    # Layer 1: Depth-Anything-V2 & Parallax
+│   │   │   ├── layer2_recapture.py# Layer 2: C2PA Parser & 2D-FFT Moiré
+│   │   │   └── layer3_geospatial.py# Layer 3: ESRI Satellite & LightGlue
+│   │   ├── pipeline.py         # Multi-layer audit orchestrator
+│   │   ├── api.py              # FastAPI REST API endpoints
+│   │   └── cli.py              # Interactive CLI
+│   ├── agents/                 # CrewAI Multi-Agent Disbursement Deliberation
+│   ├── tests/                  # Unit and integration test suite
+│   ├── cache/                  # Local satellite tile cache
+│   ├── pyproject.toml          # uv dependency manifest
+│   ├── uv.lock                 # Locked dependencies
+│   ├── main.py                 # CLI entrypoint
+│   └── run_test.py             # Custom media verification script
+│
+└── frontend/                   # 📱 Flutter Mobile & Web Client (SiteCheck)
+    ├── lib/
+    │   ├── main.dart           # App entrypoint & high-contrast outdoor palette
+    │   ├── models.dart         # Site, Milestone, CaptureEvidence models
+    │   ├── screens/            # Site list, Camera capture, and Review screens
+    │   └── services/           # In-isolate stamp burn-in, location & outbox
+    ├── android/                # Android native project
+    ├── ios/                    # iOS native project (with permissions)
+    ├── web/                    # Flutter web entrypoint
+    ├── test/                   # Widget tests
+    └── pubspec.yaml            # Flutter dependencies
 ```
 
 ---
 
-## Installation
+## 🚀 Quickstart: Running Backend & Frontend
 
-Using `uv` (recommended):
+### 1. Start Backend API
 ```bash
-cd vision_agent
+cd backend
 uv sync
-```
-
----
-
-## Configuration (`.env`)
-
-The system operates **100% locally with zero external API keys required**.
-You can customize local security thresholds in `.env`:
-
-```ini
-# Security Thresholds (All checks run 100% locally)
-INSPECT_DEPTH_EDGE_COINCIDENCE_MIN=1.10
-INSPECT_PLANE_FIT_R2_MAX_THRESHOLD=0.88
-INSPECT_SCREEN_RECAPTURE_MAX_CONFIDENCE=0.55
-INSPECT_AI_GENERATED_MAX_CONFIDENCE=0.60
-INSPECT_LOCAL_MOIRE_ENERGY_THRESHOLD=0.65
-INSPECT_GPS_TOLERANCE_METERS=100.0
-INSPECT_LIGHTGLUE_MIN_INLIER_MATCHES=15
-
-# Satellite Imagery: Uses free worldwide ESRI World Imagery tiles automatically
-# AI Detection: Uses local C2PA JUMBF container parser and 2D-FFT Moiré detector
-```
-
----
-
-## Usage
-
-### 1. Command Line Interface (CLI)
-
-Run inspection on any site video or photo directly:
-
-```bash
-# Basic inspection against loan coordinates
-uv run python main.py \
-  --media path/to/site_video.mp4 \
-  --loan-id LN-2026-8942 \
-  --stage "Roofing" \
-  --expected-lat 37.7749 \
-  --expected-lng -122.4194 \
-  --live-lat 37.7749 \
-  --live-lng -122.4194
-```
-
-### 2. REST API Server
-
-Start the verification server:
-```bash
 uv run uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
 ```
+* API Health: `http://localhost:8000/v1/health`
+* Swagger UI Docs: `http://localhost:8000/docs`
 
-Submit an inspection request:
+Or run via Docker:
 ```bash
-curl -X POST "http://localhost:8000/api/v1/inspect" \
-  -F "file=@/path/to/construction_site.mp4" \
-  -F "loan_id=LN-2026-8942" \
-  -F "borrower_name=Apex Horizon Developers" \
-  -F "project_name=Oakwood Residential Phase 2" \
-  -F "construction_stage=Framing" \
-  -F "disbursement_amount_usd=150000" \
-  -F "expected_latitude=37.7749" \
-  -F "expected_longitude=-122.4194" \
-  -F "live_latitude=37.7749" \
-  -F "live_longitude=-122.4194"
+docker compose up --build
 ```
 
-### 3. Automated Tests
+---
 
-Run the complete test suite:
+### 2. Run Frontend Client
+
 ```bash
+cd frontend
+
+# Run in Chrome Web browser:
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+
+# Or build production web bundle for Vercel / Netlify:
+flutter build web --dart-define=API_BASE_URL=https://<YOUR_BACKEND_URL>
+```
+
+---
+
+### 3. Run Backend Automated Tests
+```bash
+cd backend
 uv run pytest -v
 ```
----
-
-## Mobile Client: SiteCheck Flutter App 📱
-
-The repository also includes `sitecheck`, a specialized Flutter mobile inspection app located in the root directory.
-
-### Key Anti-Fraud Architecture
-1. **Camera-Only Capture**: Deliberately omits photo library picking (`image_picker`) to ensure media originates exclusively from the physical device camera.
-2. **Ghost Framing Overlay**: Shows a 30% opacity overlay of the last approved tranche photo to guarantee longitudinal camera framing consistency.
-3. **Burn-in Audit Watermark**: Burns an indelible audit band onto the image (loan account, GPS coordinates, timestamp, accuracy) in a background isolate.
-4. **Anti-GPS Spoofing**: Inspects `isMocked` flags via `Geolocator` to block fake GPS / location-spoofing developer apps.
-5. **Offline Resilient Outbox**: Queues evidence packets locally with exponential backoff sync to the FastAPI vision backend.
 
 ---
 
-## 🚀 Quickstart: Running Frontend & Backend
+### 4. Hosting & Deployment Guide
 
-Anyone pulling this repo can run both backend and frontend seamlessly.
+* **Frontend (Vercel / Netlify)**:
+  * Deploy using `npx vercel deploy --prod frontend/build/web` (uses the root `vercel.json`).
+  * Or drag and drop `frontend/build/web` onto Netlify Drop.
+* **Backend (Railway / Render / Docker)**:
+  * Connect your GitHub repo to Railway or Render.
+  * The root `Dockerfile` automatically builds `backend/` and exposes port 8000.
 
-### 1. Start the Backend API (Terminal 1)
-```bash
-# Install Python dependencies (managed via uv)
-uv sync
-
-# Launch FastAPI server
-uv run uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Backend endpoints ready:
-* `GET  /v1/sites` — Returns registered loans, active milestones, and coordinates.
-* `POST /v1/captures` — Receives mobile photos, validates SHA-256, prevents photo reuse (409), and executes the 3-Layer Vision Pipeline.
-* `POST /api/v1/inspect` — Direct verification endpoint for CLI and automated workflows.
-* `GET  /v1/health` — System status, active layers, and submission counter.
-
----
-
-### 2. Run the Mobile App (Terminal 2)
-
-#### For Android Emulator:
-Android emulators access the host machine's `localhost` via `10.0.2.2`:
-```bash
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
-```
-
-#### For macOS Desktop / Web / iOS Simulator:
-```bash
-flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
-# or iOS:
-flutter run -d iPhone --dart-define=API_BASE_URL=http://localhost:8000
-```
-
-#### For Physical Android / iPhone:
-Use your machine's Wi-Fi IP address (e.g., `192.168.1.50`):
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.50:8000
-```
-
----
-
-### 3. Run the 3-Agent Risk Crew (Optional)
-To run the full multi-agent CrewAI deliberation (`DocumentAgent` ➔ `SiteVisionAgent` ➔ `FraudRiskOfficer`):
-```bash
-# Provide your GEMINI_API_KEY in .env
-uv run python -m agents.main
-```
-
----
-
-### 4. Run Automated Tests
-```bash
-uv run pytest tests/test_api_captures.py -v
-```
 
