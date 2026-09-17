@@ -150,10 +150,12 @@ class _CaptureScreenState extends State<CaptureScreen>
     try {
       final shot = await cam.takePicture();
       final capturedAt = DateTime.now();
+      final rawBytes = await shot.readAsBytes();
+      final outPath = await _stamps.stampedOutputPath(widget.milestone.id);
 
       final stamped = await _stamps.stamp(StampRequest(
-        sourcePath: shot.path,
-        outputPath: await _stamps.stampedOutputPath(widget.milestone.id),
+        sourceBytes: rawBytes,
+        outputPath: outPath,
         siteLabel: widget.site.label,
         loanAccountNo: widget.site.loanAccountNo,
         milestoneLabel: widget.milestone.label,
@@ -163,12 +165,11 @@ class _CaptureScreenState extends State<CaptureScreen>
         capturedAt: capturedAt,
       ));
 
-      // The camera plugin's temp file is no longer needed once the stamped
-      // copy exists, and leaving unstamped originals on disk is exactly the
-      // artefact a borrower could later reuse.
-      try {
-        await File(shot.path).delete();
-      } catch (_) {}
+      if (!kIsWeb) {
+        try {
+          await File(shot.path).delete();
+        } catch (_) {}
+      }
 
       final device = await _deviceFacts();
 
@@ -184,13 +185,14 @@ class _CaptureScreenState extends State<CaptureScreen>
         deviceModel: device.$1,
         deviceId: device.$2,
         imageSha256: stamped.sha256Hex,
-        imageBytes: stamped.bytes,
+        imageBytes: stamped.byteLength,
       );
 
       if (!mounted) return;
       final submitted = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => ReviewScreen(
+            imageBytes: stamped.bytes,
             image: stamped.file,
             evidence: evidence,
             site: widget.site,

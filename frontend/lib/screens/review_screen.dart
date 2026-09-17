@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -13,14 +14,16 @@ import 'verification_result_screen.dart';
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({
     super.key,
-    required this.image,
+    required this.imageBytes,
+    this.image,
     required this.evidence,
     required this.site,
     required this.milestone,
     required this.submissions,
   });
 
-  final File image;
+  final Uint8List imageBytes;
+  final File? image;
   final CaptureEvidence evidence;
   final Site site;
   final Milestone milestone;
@@ -44,10 +47,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() => _sending = true);
 
     final result = await widget.submissions.submit(
-      widget.image,
+      widget.imageBytes,
       widget.evidence.copyWith(
         borrowerNote: _note.text.trim().isEmpty ? null : _note.text.trim(),
       ),
+      image: widget.image,
     );
 
     if (!mounted) return;
@@ -60,6 +64,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             MaterialPageRoute(
               builder: (_) => VerificationResultScreen(
                 report: result.report!,
+                imageBytes: widget.imageBytes,
                 image: widget.image,
                 site: widget.site,
                 milestone: widget.milestone,
@@ -129,7 +134,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: Image.file(widget.image, fit: BoxFit.cover),
+            child: Image.memory(widget.imageBytes, fit: BoxFit.cover),
           ),
           const SizedBox(height: 16),
 

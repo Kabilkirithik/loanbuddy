@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models.dart';
 
@@ -6,14 +7,16 @@ class VerificationResultScreen extends StatelessWidget {
   const VerificationResultScreen({
     super.key,
     required this.report,
-    required this.image,
+    required this.imageBytes,
+    this.image,
     required this.site,
     required this.milestone,
     this.captureRef,
   });
 
   final InspectionReport report;
-  final File image;
+  final Uint8List imageBytes;
+  final File? image;
   final Site site;
   final Milestone milestone;
   final String? captureRef;
@@ -156,8 +159,8 @@ class VerificationResultScreen extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    image,
+                  child: Image.memory(
+                    imageBytes,
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
