@@ -17,9 +17,15 @@ class SiteRepository {
         label: 'Plot 14, Bagayam',
         borrowerName: 'R. Selvakumar',
         loanAccountNo: 'NBF-2291-0087',
+        // TODO: replace with the real lat/lng of wherever you're testing
+        // from. Get yours by opening Google Maps on your phone, long-press
+        // your current location, and copy the coordinates shown.
         lat: 12.9165,
         lng: 79.1325,
-        allowedRadiusMeters: 60,
+        // Widened for testing so you don't need exact coordinates yet —
+        // 60m was the realistic production value. Narrow this back down
+        // once you've set real site coordinates.
+        allowedRadiusMeters: 5000,
         milestones: [
           Milestone(
             id: 'ms_1',
