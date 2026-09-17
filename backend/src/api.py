@@ -43,12 +43,15 @@ app.add_middleware(
 pipeline = SiteInspectionPipeline()
 
 @app.on_event("startup")
-def warmup_models():
-    """Pre-warm neural models during server startup so client requests never wait for downloads."""
+def startup_event():
+    logger.info("Pre-warming Depth-Anything-V2 model during startup...")
     try:
-        logger.info("Pre-warming Depth-Anything-V2 neural model...")
-        _ = pipeline.layer1.pipeline
-        logger.info("Vision models warmed up and ready.")
+        pipeline.layer1._get_depth_pipeline()
+        import numpy as np
+        dummy = np.zeros((256, 256, 3), dtype=np.uint8)
+        pipeline.layer1.estimate_depth(dummy)
+        pipeline.layer3.fetch_free_satellite_reference(GPSCoordinate(latitude=12.9165, longitude=79.1325))
+        logger.info("Vision models and satellite cache warmed up and ready in RAM.")
     except Exception as e:
         logger.warning(f"Model pre-warm notice: {e}")
 

@@ -24,6 +24,9 @@ COPY backend/src/ ./src/
 COPY backend/agents/ ./agents/
 COPY backend/cache/ ./cache/
 
+# Pre-download Depth-Anything-V2 weights into the image so container starts instantaneously
+RUN .venv/bin/python -c "from transformers import pipeline; pipeline(task='depth-estimation', model='depth-anything/Depth-Anything-V2-Small-hf')"
+
 ENV PATH="/app/backend/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000

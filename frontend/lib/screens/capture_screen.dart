@@ -188,6 +188,10 @@ class _CaptureScreenState extends State<CaptureScreen>
         imageBytes: stamped.byteLength,
       );
 
+      try {
+        await _camera?.pausePreview();
+      } catch (_) {}
+
       if (!mounted) return;
       final submitted = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
@@ -201,7 +205,13 @@ class _CaptureScreenState extends State<CaptureScreen>
           ),
         ),
       );
-      if (submitted == true && mounted) Navigator.of(context).pop(true);
+      if (submitted == true && mounted) {
+        Navigator.of(context).pop(true);
+      } else if (mounted) {
+        try {
+          await _camera?.resumePreview();
+        } catch (_) {}
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

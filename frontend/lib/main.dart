@@ -27,7 +27,7 @@ Future<void> main() async {
   final submissions = SubmissionService(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://api.sitecheck.local',
+      defaultValue: 'https://loanbuddy-production.up.railway.app',
     ),
     authToken: const String.fromEnvironment('AUTH_TOKEN', defaultValue: 'dev'),
   );

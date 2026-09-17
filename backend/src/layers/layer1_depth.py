@@ -82,7 +82,8 @@ class DepthParallaxValidator:
         pipe = self._get_depth_pipeline()
         if pipe != "FALLBACK":
             try:
-                output = pipe(infer_img)
+                with torch.inference_mode():
+                    output = pipe(infer_img)
                 if "predicted_depth" in output:
                     depth_tensor = output["predicted_depth"]
                     if isinstance(depth_tensor, torch.Tensor):
